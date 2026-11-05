@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тактический симулятор — Единая база схем</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+    }
+    input[type=range] {
+      accent-color: #38bdf8;
+    }
+    canvas { touch-action: none; }
+    .dropdown-menu {
+      transform-origin: top left;
+      transition: all 0.15s ease-out;
+    }
+    /* Стили для активного цвета */
+    .color-btn { opacity: 0.5; transform: scale(0.9); }
+    .color-btn.active { opacity: 1; transform: scale(1.1); box-shadow: 0 0 10px currentColor; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col overflow-x-hidden">
+
+  <!-- ВЕРХНЯЯ ПАНЕЛЬ (ШАПКА И ВЫПАДАЮЩИЕ МЕНЮ ЗОН) -->
+  <header class="bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 py-2.5 sticky top-0 z-40 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+    
+    <!-- Логотип и название -->
+    <div class="flex items-center space-x-3">
+      <div id="headerIconBox" class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+        <i data-lucide="layers" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">Тактический симулятор</h1>
+          <span id="activeZoneBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60">
+            Средняя зона
+          </span>
+        </div>
+        <p id="activeSystemSubtitle" class="text-xs text-slate-400 font-medium">Система 1-1-3 Neutral Zone Trap</p>
+      </div>
+    </div>
+
+    <!-- НАВИГАЦИЯ ПО ЗОНАМ (3 ВЫПАДАЮЩИХ МЕНЮ) -->
+    <div class="flex flex-wrap items-center gap-2">
+      
+      <!-- 1. ЗОНА НАПАДЕНИЯ -->
+      <div class="relative" id="dropdown-OZ">
+        <button onclick="toggleDropdown('OZ')" id="btn-zone-OZ" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white">
+          <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+          <span>Зона нападения</span>
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
+        </button>
+        <div id="menu-OZ" class="hidden absolute left-0 mt-2 w-64 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl py-2 z-50">
+          <div class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Активный форчек</div>
+          <button onclick="selectSystem('OZ_122')" class="w-full text-left px-3.5 py-2.5 text-xs hover:bg-slate-800 flex items-center justify-between group transition">
+            <div>
+              <div class="font-bold text-white group-hover:text-rose-400">Схема 1-2-2 (Форчек)</div>
+              <div class="text-[11px] text-slate-400">Контакт, D-to-D, Overpass, Rim</div>
+            </div>
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">4 сцен.</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. СРЕДНЯЯ (НЕЙТРАЛЬНАЯ) ЗОНА -->
+      <div class="relative" id="dropdown-NZ">
+        <button onclick="toggleDropdown('NZ')" id="btn-zone-NZ" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all bg-cyan-950/60 text-cyan-300 border-cyan-700/80 shadow-sm">
+          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          <span>Средняя (нейтральная) зона</span>
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-cyan-400"></i>
+        </button>
+        <div id="menu-NZ" class="hidden absolute left-0 mt-2 w-72 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl py-2 z-50">
+          <div class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Капканы и сдерживание (NZ Trap)</div>
+          <button onclick="selectSystem('NZ_113')" class="w-full text-left px-3.5 py-2.5 text-xs hover:bg-slate-800 flex items-center justify-between group transition">
+            <div>
+              <div class="font-bold text-white group-hover:text-cyan-400">Схема 1-1-3 (Синяя линия)</div>
+              <div class="text-[11px] text-slate-400">Подкат тройки, Гэп 1.5–2м, Стэкинг</div>
+            </div>
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300">3 сцен.</span>
+          </button>
+          <button onclick="selectSystem('NZ_122')" class="w-full text-left px-3.5 py-2.5 text-xs hover:bg-slate-800 flex items-center justify-between group transition border-t border-slate-800/60">
+            <div>
+              <div class="font-bold text-white group-hover:text-cyan-400">Схема 1-2-2 (Red Line Trap)</div>
+              <div class="text-[11px] text-slate-400">Шлюз на красной линии + Ротация</div>
+            </div>
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300">4 сцен.</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. ЗОНА ЗАЩИТЫ -->
+      <div class="relative" id="dropdown-DZ">
+        <button onclick="toggleDropdown('DZ')" id="btn-zone-DZ" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span>Зона защиты</span>
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
+        </button>
+        <div id="menu-DZ" class="hidden absolute left-0 mt-2 w-64 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl py-2 z-50">
+          <div class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Позиционная оборона (DZC)</div>
+          <button onclick="selectSystem('DZ_BOX1')" class="w-full text-left px-3.5 py-2.5 text-xs hover:bg-slate-800 flex items-center justify-between group transition">
+            <div>
+              <div class="font-bold text-white group-hover:text-emerald-400">Коробочка + 1 (Box + 1)</div>
+              <div class="text-[11px] text-slate-400">Защита пятака и слота (Базовая)</div>
+            </div>
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">Шаблон</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- УНИВЕРСАЛЬНЫЙ ИНСТРУМЕНТ: ПЛАНШЕТ + ЭКСПОРТ -->
+    <div class="flex items-center gap-2">
+      <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs">
+        <button onclick="setMode('anim')" id="mode-anim-btn" class="px-2.5 py-1.5 rounded-lg font-semibold bg-cyan-500 text-slate-950 shadow transition flex items-center gap-1.5">
+          <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
+          <span>Анимация</span>
+        </button>
+        <button onclick="setMode('free')" id="mode-free-btn" class="px-2.5 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5">
+          <i data-lucide="hand" class="w-3.5 h-3.5"></i>
+          <span>Планшет (Доска)</span>
+        </button>
+      </div>
+
+      <button onclick="exportTacticalCard()" class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white px-3 py-2 rounded-xl font-semibold text-xs shadow-md transition-all" title="Сохранить PNG карточку">
+        <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+        <span class="hidden xl:inline">Экспорт</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ПОДШАПКА: ПЕРЕКЛЮЧАТЕЛЬ СЦЕНАРИЕВ ТЕКУЩЕЙ СХЕМЫ -->
+  <div class="bg-slate-900/50 border-b border-slate-800/80 px-4 py-2">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2 text-xs text-slate-400">
+        <i data-lucide="git-branch" class="w-3.5 h-3.5 text-cyan-400"></i>
+        <span class="font-semibold text-slate-300">Сценарии развития ситуации:</span>
+      </div>
+      <div id="scenarioButtonsContainer" class="flex flex-wrap items-center gap-1.5">
+        <!-- Кнопки сценариев генерируются динамически -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+  <main class="flex-1 p-3 sm:p-5 max-w-7xl w-full mx-auto flex flex-col lg:flex-row gap-5">
+    
+    <!-- ЛЕВАЯ КОЛОНКА: ХОЛСТ И ПЛЕЕР -->
+    <div class="flex-1 flex flex-col gap-4">
+      
+      <!-- Контейнер площадки -->
+      <div class="relative bg-slate-900 rounded-2xl p-2.5 sm:p-3.5 border border-slate-800 shadow-2xl overflow-hidden flex flex-col">
+        <div class="absolute top-5 left-5 z-20 flex items-center justify-between w-[calc(100%-40px)] gap-2 pointer-events-none">
+          <div class="flex items-center gap-2 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800/80 text-xs shadow-lg">
+            <span id="phaseDot" class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span id="canvasPhaseLabel" class="font-semibold text-slate-200">Фаза 1</span>
+          </div>
+          <div id="statusTip" class="hidden font-semibold text-amber-300 bg-amber-950/80 px-3 py-1.5 rounded-xl border border-amber-700/60 text-xs backdrop-blur-md shadow-lg transition-all">
+            Режим доски: ЛКМ — двигать игроков | ПКМ — рисовать стрелки
+          </div>
+        </div>
+
+        <div class="relative w-full aspect-[200/85] min-h-[300px] sm:min-h-[380px] lg:min-h-[440px] bg-slate-950 rounded-xl overflow-hidden border border-slate-800/80">
+          <canvas id="rinkCanvas" class="w-full h-full block cursor-crosshair active:cursor-grabbing"></canvas>
+        </div>
+      </div>
+
+      <!-- Панель управления таймлайном -->
+      <div id="animControls" class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-4 flex flex-col gap-3 shadow-lg transition-opacity duration-300">
+        <div class="flex items-center gap-3">
+          <span id="currentTimeDisplay" class="font-mono text-xs font-semibold text-cyan-400 w-12 text-right">0.0 s</span>
+          <div class="relative flex-1 flex items-center">
+            <input id="timelineSlider" type="range" min="0" max="10" step="0.05" value="0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+            <div class="absolute w-full px-1 flex justify-between pointer-events-none text-[10px] text-slate-500 -bottom-4 font-mono">
+              <span>0.0s (Ф1)</span><span>2.5s (Ф2)</span><span>5.0s (Ф3)</span><span>7.5s (Ф4)</span><span>10.0s</span>
+            </div>
+          </div>
+          <span class="font-mono text-xs text-slate-500 w-12">10.0 s</span>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <div class="flex items-center gap-2">
+            <button id="playPauseBtn" onclick="togglePlay()" class="flex items-center gap-1.5 bg-cyan-500 hover:bg-cyan-400 active:scale-95 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm shadow-md transition-all">
+              <i data-lucide="play" id="playIcon" class="w-4 h-4 fill-current"></i>
+              <span id="playBtnText">Старт</span>
+            </button>
+            <button onclick="resetTimeline()" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 p-2 rounded-xl border border-slate-700 transition" title="Сброс в начало">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            </button>
+            <button onclick="stepFrame(-0.5)" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 p-2 rounded-xl border border-slate-700 transition" title="-0.5 сек">
+              <i data-lucide="skip-back" class="w-4 h-4"></i>
+            </button>
+            <button onclick="stepFrame(0.5)" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 p-2 rounded-xl border border-slate-700 transition" title="+0.5 сек">
+              <i data-lucide="skip-forward" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-1 bg-slate-950/70 p-1 rounded-xl border border-slate-800 text-xs">
+            <span class="px-2 text-slate-400 text-[11px] font-semibold">Фазы:</span>
+            <button onclick="jumpTo(0.0)" class="px-2.5 py-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white font-medium transition">1</button>
+            <button onclick="jumpTo(2.5)" class="px-2.5 py-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white font-medium transition">2</button>
+            <button onclick="jumpTo(5.0)" class="px-2.5 py-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white font-medium transition">3</button>
+            <button onclick="jumpTo(7.5)" class="px-2.5 py-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white font-medium transition">4</button>
+          </div>
+
+          <div class="flex items-center gap-1 bg-slate-950/70 p-1 rounded-xl border border-slate-800 text-xs">
+            <button id="spd05" onclick="setSpeed(0.5)" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition">0.5x</button>
+            <button id="spd10" onclick="setSpeed(1.0)" class="px-2.5 py-1 rounded-lg bg-slate-800 text-cyan-400 font-bold transition">1.0x</button>
+            <button id="spd15" onclick="setSpeed(1.5)" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition">1.5x</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Панель инструментов планшета (Видна в режиме Планшета) -->
+      <div id="drawControls" class="hidden bg-slate-900/95 border border-amber-500/40 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          
+          <div class="flex items-center gap-2 text-xs">
+            <span class="text-amber-300 font-semibold flex items-center gap-1.5 mr-1">
+              <i data-lucide="pen-tool" class="w-4 h-4"></i> Кисть (ПКМ):
+            </span>
+            <!-- Цвета для кисти -->
+            <button onclick="setDrawTool('color', '#38bdf8')" id="color-blue" class="color-btn active w-7 h-7 rounded-full bg-sky-500/20 border-2 border-sky-400 transition flex items-center justify-center text-sky-400"><div class="w-3 h-3 rounded-full bg-sky-400"></div></button>
+            <button onclick="setDrawTool('color', '#f43f5e')" id="color-red" class="color-btn w-7 h-7 rounded-full bg-rose-500/20 border-2 border-rose-500 transition flex items-center justify-center text-rose-500"><div class="w-3 h-3 rounded-full bg-rose-500"></div></button>
+            <button onclick="setDrawTool('color', '#10b981')" id="color-green" class="color-btn w-7 h-7 rounded-full bg-emerald-500/20 border-2 border-emerald-500 transition flex items-center justify-center text-emerald-500"><div class="w-3 h-3 rounded-full bg-emerald-500"></div></button>
+            <button onclick="setDrawTool('color', '#eab308')" id="color-yellow" class="color-btn w-7 h-7 rounded-full bg-yellow-500/20 border-2 border-yellow-400 transition flex items-center justify-center text-yellow-400"><div class="w-3 h-3 rounded-full bg-yellow-400"></div></button>
+            
+            <div class="w-px h-6 bg-slate-700 mx-1"></div>
+            
+            <!-- Точечный Ластик -->
+            <button onclick="setDrawTool('eraser')" id="tool-eraser" class="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border-2 border-slate-700 text-slate-400 hover:text-white transition" title="Ластик: кликните ЛКМ по нарисованной стрелке, чтобы стереть её">
+              <i data-lucide="eraser" class="w-4 h-4"></i> Ластик (ЛКМ)
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="syncFreePositions(); render();" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition" title="Вернуть игроков на исходные позиции">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Сбросить игроков
+            </button>
+            <button onclick="clearDrawings()" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition" title="Стереть все стрелки разом">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-400"></i> Стереть всё
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ПРАВАЯ КОЛОНКА: МЕТОДИКА, СЛОИ И РОЛИ -->
+    <div class="w-full lg:w-96 flex flex-col gap-4">
+      
+      <!-- Карточка описания текущей фазы -->
+      <div id="methodologyCard" class="bg-gradient-to-b from-slate-900 to-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl transition-all">
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-2.5 mb-3">
+          <span id="phaseBadge" class="bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+            Фаза 1
+          </span>
+          <span class="text-xs text-slate-400 font-medium">Тактический фокус</span>
+        </div>
+        <h3 id="phaseTitle" class="text-base font-bold text-white mb-1.5">Заголовок фазы</h3>
+        <p id="phaseDesc" class="text-xs text-slate-300 leading-relaxed min-h-[65px]">Описание действий игроков...</p>
+        <div class="mt-3 pt-3 border-t border-slate-800 text-xs space-y-2">
+          <div class="flex items-start gap-2 text-slate-400">
+            <i data-lucide="check-circle" class="w-4 h-4 text-cyan-400 shrink-0 mt-0.5"></i>
+            <span id="phasePoint1">Ключевой акцент 1</span>
+          </div>
+          <div class="flex items-start gap-2 text-slate-400">
+            <i data-lucide="check-circle" class="w-4 h-4 text-cyan-400 shrink-0 mt-0.5"></i>
+            <span id="phasePoint2">Ключевой акцент 2</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Визуальные слои -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+          <i data-lucide="sliders" class="w-3.5 h-3.5 text-cyan-400"></i>
+          Тактические слои и фильтры
+        </h4>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <label class="flex items-center gap-2 bg-slate-950/60 p-2 rounded-xl border border-slate-800/80 cursor-pointer hover:border-slate-700">
+            <input type="checkbox" id="layerLanes" checked onchange="render()" class="rounded text-cyan-500">
+            <span>Коридоры (Lanes)</span>
+          </label>
+          <label class="flex items-center gap-2 bg-slate-950/60 p-2 rounded-xl border border-slate-800/80 cursor-pointer hover:border-slate-700">
+            <input type="checkbox" id="layerCones" checked onchange="render()" class="rounded text-cyan-500">
+            <span>Зоны клюшек</span>
+          </label>
+          <label class="flex items-center gap-2 bg-slate-950/60 p-2 rounded-xl border border-slate-800/80 cursor-pointer hover:border-slate-700">
+            <input type="checkbox" id="layerTrajectories" checked onchange="render()" class="rounded text-cyan-500">
+            <span>Траектории</span>
+          </label>
+          <label class="flex items-center gap-2 bg-slate-950/60 p-2 rounded-xl border border-slate-800/80 cursor-pointer hover:border-slate-700">
+            <input type="checkbox" id="layerGap" checked onchange="render()" class="rounded text-cyan-500">
+            <span>Гэп (~1.5–2 м)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Роли игроков в текущей схеме -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl flex-1 flex flex-col">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-2">
+          <i data-lucide="users" class="w-3.5 h-3.5 text-cyan-400"></i>
+          Роли игроков в выбранной схеме
+        </h4>
+        <div id="rolesContainer" class="space-y-2 text-xs">
+          <!-- Генерируется динамически под выбранную схему -->
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    lucide.createIcons();
+
+    const canvas = document.getElementById('rinkCanvas');
+    const ctx = canvas.getContext('2d');
+    const V_WIDTH = 2000;
+    const V_HEIGHT = 850;
+
+    // --- ЕДИНАЯ БАЗА ВСЕХ ТАКТИЧЕСКИХ СХЕМ ---
+    const TACTICAL_DB = {
+      // ==========================================
+      // 1. СРЕДНЯЯ ЗОНА: СХЕМА 1-1-3 (NZ TRAP)
+      // ==========================================
+      NZ_113: {
+        id: 'NZ_113',
+        zone: 'NZ',
+        zoneName: 'Средняя (нейтральная) зона',
+        name: 'Схема 1-1-3 Neutral Zone Trap',
+        accent: 'cyan',
+        roles: [
+          { tag: 'F1', color: 'bg-blue-600', name: 'First Forechecker', desc: 'Выдавливание по дуге к борту (Angling)' },
+          { tag: 'F2', color: 'bg-blue-700', name: 'Dot-Lane Lock', desc: 'Держит центр (Dot Lane), режет пас в середину' },
+          { tag: 'D1', color: 'bg-emerald-600', name: 'Wall Stopper', desc: 'Подкат спиной, гэп 1.5–2м и стык на синей' },
+          { tag: 'D2', color: 'bg-emerald-500', name: 'Middle Safety', desc: 'Контроль центральной оси и страховка подбора' },
+          { tag: 'F3', color: 'bg-emerald-700', name: 'Wide Weakside', desc: 'Закрывает дальний фланг / готов к контратаке' }
+        ],
+        scenarios: {
+          A: {
+            btnLabel: 'Сценарий A: Борт и подкат',
+            title: 'Сценарий A: Подкат тройки, гэп-контроль и стык на синей линии',
+            phases: [
+              { tEnd: 2.5, badge: 'Фаза 1 (0.0 - 2.5с)', label: 'Фаза 1: Угол F1 и синхронный старт подката', title: 'Выдавливание по дуге и начало подката тройки', desc: 'D1 соперника раскатывает за воротами. F1 режет угол к борту. Тройка D1-D2-F3 начинает движение с подката спиной вперед от центра поля.', p1: 'F1 отрезает передачу назад на D2.', p2: 'Тройка катится спиной вперед, синхронизируя скорость.' },
+              { tEnd: 5.0, badge: 'Фаза 2 (2.5 - 5.0с)', label: 'Фаза 2: Контроль гэпа (длина клюшки)', title: 'Гэп-контроль с подката (Gap Control: 1.5–2 м)', desc: 'Откатываясь спиной к синей линии, защитники держат дистанцию вытянутой клюшки (~1.5–2 м). F2 перекрывает центр.', p1: 'Дистанция клюшки исключает обводку на скорости.', p2: 'D1 готов мгновенно сделать шаг в тело в момент приема.' },
+              { tEnd: 7.5, badge: 'Фаза 3 (5.0 - 7.5с)', label: 'Фаза 3: Прием передачи и шаг навстречу', title: 'Встреча в момент приема (Step-Up / Gap Close)', desc: 'Когда шайба доходит до OF1 у борта, D1 завершает подкат и делает резкий шаг вперед, ликвидируя зазор.', p1: 'Защитник вступает в отбор ровно в момент приема шайбы.', p2: 'D2 страхует центральный коридор.' },
+              { tEnd: 10.0, badge: 'Фаза 4 (7.5 - 10.0с)', label: 'Фаза 4: Стык, отбор и первый пас', title: 'Стык у борта и подбор шайбы напарником D2', desc: 'D1 фиксирует корпус соперника. D2 подбирает свободную шайбу и отдает первую передачу на F2.', p1: 'Нейтрализация атаки прямо на синей линии.', p2: 'Быстрый переход в контратаку.' }
+            ],
+            players: {
+              F1: [{t:0,x:500,y:350},{t:2.5,x:620,y:560},{t:5,x:880,y:650},{t:7.5,x:1140,y:700},{t:10,x:1220,y:640}],
+              F2: [{t:0,x:820,y:360},{t:2.5,x:890,y:440},{t:5,x:1020,y:470},{t:7.5,x:1120,y:480},{t:10,x:1180,y:440}],
+              D1: [{t:0,x:1040,y:680},{t:2.5,x:1120,y:695},{t:5,x:1195,y:720},{t:7.5,x:1215,y:740},{t:10,x:1225,y:745}],
+              D2: [{t:0,x:1070,y:425},{t:2.5,x:1140,y:430},{t:5,x:1205,y:445},{t:7.5,x:1220,y:500},{t:10,x:1225,y:560}],
+              F3: [{t:0,x:1050,y:170},{t:2.5,x:1130,y:175},{t:5,x:1200,y:185},{t:7.5,x:1225,y:220},{t:10,x:1260,y:260}],
+              OD1: [{t:0,x:280,y:425},{t:2.5,x:420,y:680},{t:4.5,x:740,y:730},{t:7.5,x:920,y:730},{t:10,x:1050,y:720}],
+              OD2: [{t:0,x:260,y:220},{t:2.5,x:340,y:200},{t:5,x:480,y:220},{t:7.5,x:620,y:260},{t:10,x:720,y:300}],
+              OF1: [{t:0,x:550,y:720},{t:2.5,x:700,y:740},{t:5,x:980,y:750},{t:7.5,x:1180,y:750},{t:10,x:1205,y:755}],
+              OF2: [{t:0,x:500,y:425},{t:2.5,x:700,y:430},{t:5,x:940,y:450},{t:7.5,x:1080,y:470},{t:10,x:1140,y:480}],
+              OF3: [{t:0,x:540,y:150},{t:2.5,x:720,y:140},{t:5,x:940,y:150},{t:7.5,x:1120,y:160},{t:10,x:1180,y:180}],
+              Puck: [{t:0,x:295,y:430},{t:2.5,x:435,y:685},{t:4.5,x:755,y:735},{t:5.2,x:990,y:752},{t:7.5,x:1190,y:752},{t:8.8,x:1210,y:620},{t:10,x:1225,y:565}]
+            }
+          },
+          B: {
+            btnLabel: 'Сценарий B: D-to-D / Клещи',
+            title: 'Сценарий B: Перевод D-to-D, перестроение подката и клещи',
+            phases: [
+              { tEnd: 2.5, badge: 'Фаза 1 (0.0 - 2.5с)', label: 'Фаза 1: Смена фланга и подкат веером', title: 'Соперник делает смену D-to-D', desc: 'Соперник пасует на OD2. Тройка защиты в подкате смещает вектор к верхнему борту.', p1: 'F1 разворачивается и преследует со спины.', p2: 'F3 и D2 держат гэп к дальнему нападающему OF3.' },
+              { tEnd: 5.0, badge: 'Фаза 2 (2.5 - 5.0с)', label: 'Фаза 2: F3 идет на перехват', title: 'Выход из подката в активный отбор', desc: 'В момент передачи на верхний борт F3 прекращает откат и делает шаг навстречу OF3.', p1: 'Контроль дистанции клюшки.', p2: 'D2 страхует центральную ось.' },
+              { tEnd: 7.5, badge: 'Фаза 3 (5.0 - 7.5с)', label: 'Фаза 3: Взятие в клещи (Pincer)', title: 'Синхронный зажим: F3 спереди + F1 сзади', desc: 'Форвард OF3 попадает в клещи между F3 и доработавшим ногами F1.', p1: 'Чистый отбор клюшкой в шайбу.', p2: 'F2 открывается под контратаку.' },
+              { tEnd: 10.0, badge: 'Фаза 4 (7.5 - 10.0с)', label: 'Фаза 4: Быстрый отрыв', title: 'Перехват и пас на свободного F2', desc: 'F3 переводит шайбу в центр на F2 для быстрой контратаки сходу.', p1: 'Мгновенный переход из обороны в атаку.', p2: 'Численное преимущество.' }
+            ],
+            players: {
+              F1: [{t:0,x:500,y:400},{t:2,x:450,y:550},{t:4.5,x:420,y:320},{t:7.5,x:920,y:190},{t:10,x:1060,y:220}],
+              F2: [{t:0,x:820,y:425},{t:2.5,x:860,y:380},{t:5,x:920,y:320},{t:7.5,x:1030,y:360},{t:10,x:1180,y:410}],
+              D1: [{t:0,x:1040,y:680},{t:2.5,x:1110,y:640},{t:5,x:1180,y:560},{t:7.5,x:1210,y:520},{t:10,x:1230,y:500}],
+              D2: [{t:0,x:1070,y:425},{t:2.5,x:1120,y:380},{t:5,x:1160,y:320},{t:7.5,x:1185,y:280},{t:10,x:1200,y:270}],
+              F3: [{t:0,x:1050,y:170},{t:2.5,x:1110,y:160},{t:4.5,x:1130,y:150},{t:6,x:1080,y:140},{t:7.5,x:1040,y:140},{t:10,x:1140,y:180}],
+              OD1: [{t:0,x:320,y:520},{t:1.8,x:380,y:600},{t:5,x:420,y:580},{t:7.5,x:550,y:540},{t:10,x:680,y:500}],
+              OD2: [{t:0,x:240,y:250},{t:2.2,x:260,y:220},{t:4.8,x:520,y:180},{t:7.5,x:640,y:200},{t:10,x:740,y:240}],
+              OF1: [{t:0,x:550,y:720},{t:2.5,x:650,y:680},{t:5,x:780,y:600},{t:7.5,x:920,y:540},{t:10,x:1050,y:500}],
+              OF2: [{t:0,x:520,y:400},{t:2.5,x:680,y:350},{t:5,x:840,y:330},{t:7.5,x:1020,y:340},{t:10,x:1100,y:360}],
+              OF3: [{t:0,x:520,y:150},{t:2.5,x:680,y:130},{t:5.5,x:900,y:130},{t:7.5,x:1020,y:130},{t:10,x:1050,y:140}],
+              Puck: [{t:0,x:335,y:525},{t:1.8,x:390,y:600},{t:2.5,x:265,y:225},{t:4.8,x:535,y:180},{t:5.8,x:905,y:132},{t:7.5,x:1030,y:135},{t:9,x:1100,y:270},{t:10,x:1180,y:410}]
+            }
+          },
+          C: {
+            btnLabel: 'Сценарий C: Dump & Chase',
+            title: 'Сценарий C: Плотный подкат, вынужденный вброс и подбор D2',
+            phases: [
+              { tEnd: 2.5, badge: 'Фаза 1 (0.0 - 2.5с)', label: 'Фаза 1: Подкат на дистанции клюшки', title: 'Защитники сжимают зазор перед синей линией', desc: 'D1 и D2 откатываются спиной вперед, лишая соперника пространства для входа с контролем.', p1: 'Плотный гэп 1.5–2 м.', p2: 'Отсутствие вариантов для паса.' },
+              { tEnd: 5.0, badge: 'Фаза 2 (2.5 - 5.0с)', label: 'Фаза 2: Вынужденный вброс (Dump-in)', title: 'Соперник вынужден забросить шайбу вглубь', desc: 'OF1 делает заброс по борту. D2 разворачивается лицом к своим воротам (Pivot) и катится на подбор.', p1: 'D1 готовится блокировать бегущего OF1.', p2: 'D2 стартует за шайбой с форой по времени.' },
+              { tEnd: 7.5, badge: 'Фаза 3 (5.0 - 7.5с)', label: 'Фаза 3: Блокировка корпуса D1 (Box-out)', title: 'D1 прижимает форварда на синей линии', desc: 'D1 ставит корпус OF1 на входе, а D2 беспрепятственно забирает шайбу за воротами.', p1: 'Соперник отсечен от борьбы за подбор.', p2: 'Чистый контроль шайбы у D2.' },
+              { tEnd: 10.0, badge: 'Фаза 4 (7.5 - 10.0с)', label: 'Фаза 4: Первый пас на выход', title: 'Спокойный выход из зоны', desc: 'D2 отдает точную передачу на открывшегося в центре F2.', p1: 'Безопасный выход из-под давления.', p2: 'Переход в атаку.' }
+            ],
+            players: {
+              F1: [{t:0,x:500,y:350},{t:2.5,x:640,y:560},{t:5,x:880,y:640},{t:7.5,x:1080,y:630},{t:10,x:1180,y:560}],
+              F2: [{t:0,x:820,y:360},{t:2.5,x:890,y:440},{t:5,x:1020,y:460},{t:7.5,x:1120,y:440},{t:10,x:1240,y:380}],
+              D1: [{t:0,x:1040,y:680},{t:2.5,x:1120,y:700},{t:5,x:1200,y:720},{t:7.5,x:1235,y:740},{t:10,x:1245,y:740}],
+              D2: [{t:0,x:1070,y:425},{t:2.5,x:1140,y:425},{t:4.8,x:1220,y:425},{t:7.5,x:1820,y:500},{t:10,x:1840,y:450}],
+              F3: [{t:0,x:1050,y:170},{t:2.5,x:1120,y:180},{t:5,x:1190,y:220},{t:7.5,x:1240,y:260},{t:10,x:1300,y:300}],
+              OD1: [{t:0,x:280,y:425},{t:2.5,x:420,y:680},{t:4.5,x:700,y:730},{t:7.5,x:840,y:700},{t:10,x:940,y:680}],
+              OD2: [{t:0,x:260,y:220},{t:2.5,x:340,y:200},{t:5,x:460,y:220},{t:7.5,x:580,y:260},{t:10,x:680,y:300}],
+              OF1: [{t:0,x:550,y:720},{t:2.5,x:740,y:740},{t:5,x:1020,y:750},{t:7.5,x:1220,y:755},{t:10,x:1235,y:755}],
+              OF2: [{t:0,x:500,y:425},{t:2.5,x:700,y:430},{t:5,x:920,y:450},{t:7.5,x:1150,y:480},{t:10,x:1320,y:500}],
+              OF3: [{t:0,x:540,y:150},{t:2.5,x:720,y:140},{t:5,x:900,y:160},{t:7.5,x:1080,y:180},{t:10,x:1220,y:220}],
+              Puck: [{t:0,x:295,y:430},{t:2.5,x:435,y:685},{t:4.5,x:715,y:735},{t:6,x:1350,y:780},{t:7,x:1720,y:720},{t:7.5,x:1825,y:505},{t:8.8,x:1845,y:455},{t:10,x:1250,y:385}]
+            }
+          }
+        }
+      },
+
+      // ==========================================
+      // 2. СРЕДНЯЯ ЗОНА: СХЕМА 1-2-2 (RED LINE TRAP)
+      // ==========================================
+      NZ_122: {
+        id: 'NZ_122',
+        zone: 'NZ',
+        zoneName: 'Средняя (нейтральная) зона',
+        name: 'Схема 1-2-2 Red Line Trap (Классический капкан)',
+        accent: 'cyan',
+        roles: [
+          { tag: 'F1', color: 'bg-blue-600', name: 'Angler (Загонщик)', desc: 'Направляет раскат в один борт, режет D-to-D' },
+          { tag: 'F2', color: 'bg-blue-700', name: 'Strong-Side Wing', desc: 'Закрывает сильный борт прямо на красной линии' },
+          { tag: 'F3', color: 'bg-cyan-600', name: 'Center Lock', desc: 'Держит центральный круг на красной линии' },
+          { tag: 'D1', color: 'bg-emerald-600', name: 'Strong-Side Def', desc: 'Подкат спиной и зажим в клещи вместе с F2' },
+          { tag: 'D2', color: 'bg-emerald-500', name: 'Weak-Side Safety', desc: 'Страховка глубины и подбор дальних вбросов' }
+        ],
+        scenarios: {
+          A: {
+            btnLabel: 'A: Клещи на красной',
+            title: 'Сценарий A: Зажим в клещи (F2 + D1) на красной линии',
+            phases: [
+              { tEnd: 2.5, badge: 'Фаза 1', label: 'Фаза 1: Срезка угла F1', title: 'F1 направляет атаку в борт', desc: 'F1 движется по дуге, отрезая второго защитника и загоняя шайбу в нижний коридор.', p1: 'Изоляция одного фланга.', p2: 'F2 и F3 выстраивают шлюз на красной линии.' },
+              { tEnd: 5.0, badge: 'Фаза 2', label: 'Фаза 2: Шлюз F2-F3 на красной линии', title: 'Перекрытие красной линии', desc: 'F2 закрывает борт у красной линии, F3 контролирует центр. D1 подкатывается с гэпом 1.5–2 м.', p1: 'Красная линия — главный рубеж отбора.', p2: 'Синхронный подкат пары защитников.' },
+              { tEnd: 7.5, badge: 'Фаза 3', label: 'Фаза 3: Клещи F2 + D1', title: 'Двойной отбор на красной линии', desc: 'В момент приема шайбы у красной линии D1 делает шаг навстречу, а F2 зажимает сбоку.', p1: 'Коробочка из двух игроков на красной линии.', p2: 'F3 страхует отскок в центре.' },
+              { tEnd: 10.0, badge: 'Фаза 4', label: 'Фаза 4: Быстрая контратака', title: 'Подбор F3 и пас в отрыв на F1', desc: 'F3 забирает свободную шайбу и мгновенно отправляет F1 в контратаку.', p1: 'Высокий отбор дает быстрый выход к воротам.', p2: 'Атака сходу.' }
+            ],
+            players: {
+              F1: [{t:0,x:520,y:380},{t:2.5,x:640,y:580},{t:5,x:860,y:660},{t:7.5,x:1000,y:640},{t:10,x:1350,y:450}],
+              F2: [{t:0,x:920,y:680},{t:2.5,x:980,y:710},{t:5,x:1000,y:720},{t:7.5,x:1040,y:735},{t:10,x:1150,y:680}],
+              F3: [{t:0,x:950,y:425},{t:2.5,x:990,y:425},{t:5,x:1010,y:480},{t:7.5,x:1050,y:640},{t:10,x:1120,y:560}],
+              D1: [{t:0,x:1260,y:680},{t:2.5,x:1180,y:700},{t:5,x:1120,y:725},{t:7.5,x:1080,y:740},{t:10,x:1120,y:730}],
+              D2: [{t:0,x:1280,y:250},{t:2.5,x:1220,y:280},{t:5,x:1180,y:320},{t:7.5,x:1160,y:360},{t:10,x:1180,y:360}],
+              OD1: [{t:0,x:280,y:450},{t:2.5,x:440,y:680},{t:5,x:720,y:720},{t:10,x:820,y:720}],
+              OD2: [{t:0,x:260,y:220},{t:5,x:520,y:240},{t:10,x:640,y:260}],
+              OF1: [{t:0,x:550,y:730},{t:2.5,x:760,y:740},{t:5,x:980,y:745},{t:7.5,x:1060,y:745},{t:10,x:1065,y:745}],
+              OF2: [{t:0,x:520,y:425},{t:5,x:880,y:440},{t:10,x:980,y:460}],
+              OF3: [{t:0,x:540,y:150},{t:5,x:880,y:160},{t:10,x:1020,y:180}],
+              Puck: [{t:0,x:295,y:455},{t:2.5,x:455,y:685},{t:4.8,x:735,y:725},{t:6,x:1010,y:745},{t:7.5,x:1055,y:645},{t:10,x:1340,y:455}]
+            }
+          },
+          D: {
+            btnLabel: 'B: Ротация при D-to-D',
+            title: 'Сценарий B: Перевод D-to-D и ротация флангов «Качели» (F2 <-> F3)',
+            phases: [
+              { tEnd: 2.5, badge: 'Фаза 1', label: 'Фаза 1: Пас D-to-D за воротами', title: 'Соперник переводит шайбу на дальний борт', desc: 'OD1 видит заслон и переводит шайбу за воротами на OD2.', p1: 'Смена стороны атаки соперником.', p2: 'Сигнал к ротации второго слоя.' },
+              { tEnd: 5.0, badge: 'Фаза 2', label: 'Фаза 2: Вираж F1 через центр', title: 'F1 меняет дугу давления', desc: 'F1 не выключается, а закладывает вираж через середину, отрезая обратный пас.', p1: 'F1 продолжает гнать шайбу к борту.', p2: 'Сохранение структуры.' },
+              { tEnd: 7.5, badge: 'Фаза 3', label: 'Фаза 3: Ротация F3 на борт, F2 в центр', title: 'Зеркальная смена ролей F2 и F3', desc: 'F3 выдвигается из центра на верхний борт. F2 смещается со старого фланга в центр красной линии.', p1: 'F3 закрывает новый сильный борт.', p2: 'F2 страхует центральную ось.' },
+              { tEnd: 10.0, badge: 'Фаза 4', label: 'Фаза 4: Зажим D2 + F3', title: 'Клещи на новом фланге', desc: 'D2 подкатывается с гэпом 1.5–2 м и вместе с F3 зажимает OF3 на красной линии.', p1: 'Капкан захлопнулся на другом борту.', p2: 'Перехват шайбы.' }
+            ],
+            players: {
+              F1: [{t:0,x:520,y:380},{t:2.5,x:580,y:480},{t:5,x:540,y:280},{t:7.5,x:720,y:180},{t:10,x:920,y:180}],
+              F2: [{t:0,x:920,y:680},{t:3,x:950,y:620},{t:6,x:980,y:460},{t:10,x:1020,y:425}],
+              F3: [{t:0,x:950,y:425},{t:3,x:970,y:280},{t:6,x:1000,y:140},{t:8.5,x:1040,y:125},{t:10,x:1080,y:130}],
+              D1: [{t:0,x:1260,y:680},{t:4,x:1240,y:580},{t:8,x:1220,y:480},{t:10,x:1220,y:450}],
+              D2: [{t:0,x:1280,y:250},{t:3,x:1200,y:200},{t:6,x:1130,y:140},{t:8.5,x:1080,y:125},{t:10,x:1090,y:125}],
+              OD1: [{t:0,x:280,y:620},{t:2,x:220,y:520},{t:5,x:260,y:480},{t:10,x:400,y:480}],
+              OD2: [{t:0,x:240,y:220},{t:2.5,x:240,y:150},{t:6,x:520,y:130},{t:10,x:680,y:130}],
+              OF1: [{t:0,x:500,y:720},{t:5,x:750,y:680},{t:10,x:920,y:640}],
+              OF2: [{t:0,x:500,y:425},{t:5,x:780,y:400},{t:10,x:960,y:380}],
+              OF3: [{t:0,x:480,y:140},{t:3,x:680,y:125},{t:6,x:940,y:120},{t:8.5,x:1060,y:120},{t:10,x:1070,y:120}],
+              Puck: [{t:0,x:280,y:620},{t:1.5,x:180,y:380},{t:2.5,x:240,y:150},{t:5.5,x:535,y:130},{t:7.5,x:980,y:120},{t:8.5,x:1060,y:120},{t:10,x:1020,y:425}]
+            }
+          }
+        }
+      },
+
+      // ==========================================
+      // 3. ЗОНА НАПАДЕНИЯ: СХЕМА 1-2-2 (FORECHECK)
+      // ==========================================
+      OZ_122: {
+        id: 'OZ_122',
+        zone: 'OZ',
+        zoneName: 'Зона нападения',
+        name: 'Схема 1-2-2 Активный форчек в зоне атаки',
+        accent: 'rose',
+        roles: [
+          { tag: 'F1', color: 'bg-blue-600', name: 'First Forechecker', desc: 'Давление по дуге Inside-Out, силовой контакт' },
+          { tag: 'F2', color: 'bg-blue-500', name: 'Strong-Side Support', desc: 'Страховка F1 у борта, готовность к отбору в углу' },
+          { tag: 'F3', color: 'bg-cyan-600', name: 'High Slot / Middle', desc: 'Держит высокий слот, страхует пинч защитника' },
+          { tag: 'D1', color: 'bg-emerald-600', name: 'Strong-Side Point', desc: 'Держит синюю линию на стороне шайбы' },
+          { tag: 'D2', color: 'bg-emerald-500', name: 'Weak-Side Point / Pinch', desc: 'Страхует центр либо идет в пинч при Rim-пасе' }
+        ],
+        scenarios: {
+          A: {
+            btnLabel: 'A: Контакт у борта',
+            title: 'Сценарий A: Заход Inside-Out, силовой контакт F1 и перехват F2',
+            phases: [
+              { tEnd: 2.5, badge: 'Фаза 1 (0.0 - 2.5с)', label: 'Фаза 1: Траектория Inside-Out от F1', title: 'F1 заходит из центра наружу (Inside-Out)', desc: 'F1 катится по дуге из центра к защитнику OD1, отрезая реверс за ворота и направляя в борт.', p1: 'Отрезана половина площадки.', p2: 'F2 поджимает борт с оборонительной стороны.' },
+              { tEnd: 5.0, badge: 'Фаза 2 (2.5 - 5.0с)', label: 'Фаза 2: Силовой контакт F1', title: 'F1 завершает силовой прием у борта', desc: 'F1 плотно встречает OD1 в корпус. F2 готов мгновенно прыгнуть в угол на свободную шайбу.', p1: 'Лишение соперника времени.', p2: 'F3 контролирует высокий слот (High Slot).' },
+              { tEnd: 7.5, badge: 'Фаза 3 (5.0 - 7.5с)', label: 'Фаза 3: Подбор F2 в углу', title: 'F2 забирает выбитую шайбу', desc: 'После контакта F1 шайба отскакивает по борту, где ее сразу накрывает F2.', p1: 'Численное преимущество в углу.', p2: 'D1 и D2 держат синюю линию.' },
+              { tEnd: 10.0, badge: 'Фаза 4 (7.5 - 10.0с)', label: 'Фаза 4: Пас на слот и бросок F3', title: 'Передача на пятак под бросок F3', desc: 'F2 выдает пас из угла в высокий слот на открытого F3 для броска в касание.', p1: 'Форчек конвертирован в голевой момент.', p2: 'Быстрая атака после отбора.' }
+            ],
+            players: {
+              F1: [{t:0,x:650,y:425},{t:2.5,x:420,y:600},{t:5,x:240,y:690},{t:10,x:230,y:660}],
+              F2: [{t:0,x:720,y:700},{t:3,x:520,y:720},{t:6,x:320,y:730},{t:8,x:280,y:710},{t:10,x:300,y:680}],
+              F3: [{t:0,x:720,y:220},{t:3,x:580,y:360},{t:6,x:480,y:425},{t:10,x:420,y:425}],
+              D1: [{t:0,x:880,y:700},{t:4,x:760,y:700},{t:10,x:740,y:700}],
+              D2: [{t:0,x:880,y:220},{t:4,x:760,y:280},{t:10,x:740,y:320}],
+              OD1: [{t:0,x:200,y:480},{t:2.5,x:210,y:660},{t:5,x:230,y:710},{t:10,x:230,y:710}],
+              OD2: [{t:0,x:200,y:320},{t:5,x:220,y:200},{t:10,x:260,y:360}],
+              OF1: [{t:0,x:420,y:760},{t:5,x:580,y:770},{t:10,x:520,y:720}],
+              OF2: [{t:0,x:360,y:425},{t:5,x:480,y:460},{t:10,x:450,y:460}],
+              OF3: [{t:0,x:420,y:120},{t:5,x:600,y:120},{t:10,x:600,y:180}],
+              Puck: [{t:0,x:200,y:480},{t:2.5,x:210,y:660},{t:5,x:240,y:710},{t:7.5,x:280,y:710},{t:10,x:420,y:425}]
+            }
+          },
+          B: {
+            btnLabel: 'B: Ранний пас D-to-D',
+            title: 'Сценарий B: Ранний перевод D-to-D и смена акцента F2 / F3',
+            phases: [
+              { tEnd: 2.5, badge: 'Фаза 1 (0.0 - 2.5с)', label: 'Фаза 1: Ранний пас защитника', title: 'OD1 переводит шайбу на OD2', desc: 'Защитник соперника делает быстрый пас напарнику. F1 читает пас и продолжает быть первым форчекером.', p1: 'F1 не выключается и дорабатывает по дуге.', p2: 'Смена сильного фланга.' },
+              { tEnd: 5.0, badge: 'Фаза 2 (2.5 - 5.0с)', label: 'Фаза 2: F3 закрывает борт', title: 'F3 садится на новый сильный борт', desc: 'F3 выдвигается на верхний фланг, перекрывая выход по борту. F2 поднимается в высокий слот.', p1: 'Взаимозаменяемость F2 и F3.', p2: 'Центр остается закрытым.' },
+              { tEnd: 7.5, badge: 'Фаза 3 (5.0 - 7.5с)', label: 'Фаза 3: Сдвиг пары защитников', title: 'D2 поджимает синюю, D1 страхует центр', desc: 'Защитники синхронно сдвигаются в сторону шайбы, сохраняя плотный гэп.', p1: 'Компактность всех трех линий.', p2: 'Зажим соперника в углу.' },
+              { tEnd: 10.0, badge: 'Фаза 4 (7.5 - 10.0с)', label: 'Фаза 4: Ловушка у борта', title: 'Отбор шайбы на верхнем борту', desc: 'OD2 вынужден отдать пас в борьбу, где шайбу перехватывает F3.', p1: 'Успешная перестройка прессинга.', p2: 'Контроль шайбы в чужой зоне.' }
+            ],
+            players: {
+              F1: [{t:0,x:650,y:425},{t:2,x:450,y:580},{t:4.5,x:340,y:420},{t:7.5,x:240,y:200},{t:10,x:220,y:160}],
+              F3: [{t:0,x:720,y:200},{t:3,x:540,y:180},{t:6,x:420,y:130},{t:10,x:340,y:110}],
+              F2: [{t:0,x:720,y:700},{t:4,x:580,y:450},{t:10,x:500,y:425}],
+              D2: [{t:0,x:880,y:200},{t:4,x:760,y:140},{t:10,x:740,y:120}],
+              D1: [{t:0,x:880,y:700},{t:4,x:760,y:440},{t:10,x:740,y:425}],
+              OD1: [{t:0,x:200,y:480},{t:2,x:200,y:640},{t:10,x:240,y:680}],
+              OD2: [{t:0,x:200,y:340},{t:2.5,x:200,y:200},{t:6,x:210,y:150},{t:10,x:210,y:150}],
+              OF1: [{t:0,x:400,y:740},{t:10,x:640,y:740}],
+              OF2: [{t:0,x:350,y:425},{t:10,x:580,y:425}],
+              OF3: [{t:0,x:380,y:110},{t:6,x:460,y:110},{t:10,x:350,y:110}],
+              Puck: [{t:0,x:200,y:480},{t:1.5,x:200,y:640},{t:2.5,x:200,y:200},{t:6,x:210,y:150},{t:10,x:340,y:110}]
+            }
+          },
+          C: {
+            btnLabel: 'C: Поздний пас (Overpass)',
+            title: 'Сценарий C: Поздний перевод (Overpass) — смена ролей F1 и F3',
+            phases: [
+              { tEnd: 2.5, badge: 'Фаза 1 (0.0 - 2.5с)', label: 'Фаза 1: Задержка паса и провал F1', title: 'OD1 вытягивает F1 и отдает поздний пас', desc: 'F1 уходит глубоко в нижний угол. Защитник в последний момент переводит шайбу на OD2.', p1: 'F1 отыгран по позиции.', p2: 'Нужна мгновенная реакция партнеров.' },
+              { tEnd: 5.0, badge: 'Фаза 2 (2.5 - 5.0с)', label: 'Фаза 2: F3 взрывается в роль F1', title: 'F3 агрессивно атакует OD2', desc: 'F3 не ждет, а летит в силовой контакт на OD2, становясь новым первым загонщиком.', p1: 'Агрессивное чтение игры от F3.', p2: 'Лишение OD2 времени на разгон.' },
+              { tEnd: 7.5, badge: 'Фаза 3 (5.0 - 7.5с)', label: 'Фаза 3: Диагональный рывок F2 и возврат F1', title: 'F2 пересекает зону на борт, F1 возвращается в слот', desc: 'F1 возвращается в центр (High Slot), а F2 бежит закрывать верхний сильный борт.', p1: 'Полная ротация треугольника нападающих.', p2: 'Восстановление структуры 1-2-2.' },
+              { tEnd: 10.0, badge: 'Фаза 4 (7.5 - 10.0с)', label: 'Фаза 4: Зажим у борта', title: 'Остановка атаки соперника', desc: 'Соперник зажат на верхнем фланге без возможности выйти через центр.', p1: 'Исключен провал в прессинге.', p2: 'Надежная взаимозаменяемость.' }
+            ],
+            players: {
+              F1: [{t:0,x:600,y:425},{t:2.8,x:190,y:660},{t:6,x:360,y:520},{t:10,x:500,y:425}],
+              F3: [{t:0,x:680,y:240},{t:2.8,x:520,y:200},{t:5.5,x:240,y:150},{t:10,x:220,y:150}],
+              F2: [{t:0,x:680,y:700},{t:4,x:560,y:480},{t:7.5,x:420,y:140},{t:10,x:380,y:110}],
+              D2: [{t:0,x:880,y:200},{t:5,x:780,y:160},{t:10,x:740,y:120}],
+              D1: [{t:0,x:880,y:700},{t:5,x:800,y:520},{t:10,x:740,y:425}],
+              OD1: [{t:0,x:240,y:650},{t:2.8,x:200,y:650},{t:10,x:250,y:700}],
+              OD2: [{t:0,x:240,y:240},{t:3,x:200,y:150},{t:10,x:200,y:150}],
+              OF1: [{t:0,x:400,y:750},{t:10,x:600,y:750}],
+              OF2: [{t:0,x:350,y:425},{t:10,x:580,y:425}],
+              OF3: [{t:0,x:380,y:100},{t:10,x:480,y:100}],
+              Puck: [{t:0,x:240,y:650},{t:2.5,x:200,y:650},{t:3.3,x:200,y:150},{t:10,x:200,y:150}]
+            }
+          },
+          D: {
+            btnLabel: 'D: Rim & Pinch защитника',
+            title: 'Сценарий D: Вброс по закруглению (Rim), пинч D2 и страховка от F3',
+            phases: [
+              { tEnd: 2.5, badge: 'Фаза 1 (0.0 - 2.5с)', label: 'Фаза 1: Заброс Rim по борту', title: 'Соперник пускает шайбу по закруглению', desc: 'Под давлением F1 защитник соперника запускает шайбу по радиусу борта за воротами на противоположный край.', p1: 'F1 пытается заблокировать пас.', p2: 'Шайба идет по борту на вингер OF3.' },
+              { tEnd: 5.0, badge: 'Фаза 2 (2.5 - 5.0с)', label: 'Фаза 2: Агрессивный пинч D2', title: 'Защитник D2 срывается с синей линии (Pinch)', desc: 'D2 читает Rim-пас и идет в жесткое защемление по борту, чтобы не дать OF3 принять шайбу.', p1: 'Агрессивное закрытие зоны.', p2: 'Перехват на полборта.' },
+              { tEnd: 7.5, badge: 'Фаза 3 (5.0 - 7.5с)', label: 'Фаза 3: F3 страхует место D2', title: 'F3 поднимается на синюю линию', desc: 'Так как D2 пошел глубоко в пинч, F3 обязан подняться на синюю линию и закрыть позицию защитника.', p1: 'Железное правило: F3 страхует D2.', p2: 'F1 возвращается через центр.' },
+              { tEnd: 10.0, badge: 'Фаза 4 (7.5 - 10.0с)', label: 'Фаза 4: Сохранение зоны атаки', title: 'Отбор шайбы и перевод в слот', desc: 'D2 выигрывает борт и сбрасывает шайбу в центр на вернувшегося F1.', p1: 'Зона атаки сохранена.', p2: 'Круговая ротация D2 - F3 - F1.' }
+            ],
+            players: {
+              F1: [{t:0,x:600,y:425},{t:2,x:280,y:660},{t:5,x:420,y:500},{t:10,x:480,y:425}],
+              D2: [{t:0,x:760,y:150},{t:2.5,x:740,y:140},{t:5.5,x:420,y:100},{t:10,x:380,y:100}],
+              F3: [{t:0,x:580,y:250},{t:3.5,x:620,y:230},{t:6.5,x:750,y:180},{t:10,x:750,y:180}],
+              F2: [{t:0,x:600,y:680},{t:10,x:620,y:660}],
+              D1: [{t:0,x:760,y:700},{t:10,x:750,y:680}],
+              OD1: [{t:0,x:240,y:680},{t:10,x:220,y:680}],
+              OD2: [{t:0,x:200,y:240},{t:10,x:240,y:220}],
+              OF1: [{t:0,x:400,y:750},{t:10,x:580,y:750}],
+              OF2: [{t:0,x:350,y:425},{t:10,x:560,y:425}],
+              OF3: [{t:0,x:360,y:100},{t:5.5,x:390,y:100},{t:10,x:400,y:100}],
+              Puck: [{t:0,x:240,y:680},{t:1.5,x:105,y:425},{t:3,x:240,y:100},{t:5.5,x:410,y:100},{t:10,x:480,y:425}]
+            }
+          }
+        }
+      },
+
+      // ==========================================
+      // 4. ЗОНА ЗАЩИТЫ: КОРОБОЧКА + 1 (BOX + 1 DZC)
+      // ==========================================
+      DZ_BOX1: {
+        id: 'DZ_BOX1',
+        zone: 'DZ',
+        zoneName: 'Зона защиты',
+        name: 'Схема Box + 1 (Defensive Zone Coverage)',
+        accent: 'emerald',
+        roles: [
+          { tag: 'D1', color: 'bg-emerald-600', name: 'Strong-Side D (Угол)', desc: 'Прессинг шайбы от точки до лицевого борта' },
+          { tag: 'D2', color: 'bg-emerald-500', name: 'Net-Front D (Пятак)', desc: 'Борьба за позицию и блокировка клюшек перед воротами' },
+          { tag: 'F1', color: 'bg-blue-600', name: 'Center (+1 Rover)', desc: 'Поддержка у борта, контроль второго темпа и смена фланга' },
+          { tag: 'F2', color: 'bg-blue-500', name: 'Strong-Side W (Борт)', desc: 'Опека защитника соперника на синей со стороны шайбы' },
+          { tag: 'F3', color: 'bg-cyan-600', name: 'Weak-Side W (High Slot)', desc: 'Контроль слота и перехват передач на дальнего защитника' }
+        ],
+        scenarios: {
+          A: {
+            btnLabel: 'A: Борьба у борта и пятак',
+            title: 'Сценарий A: Давление в углу (D1 + F1) и контроль пятака D2',
+            phases: [
+              { tEnd: 2.5, badge: 'Фаза 1 (0.0 - 2.5с)', label: 'Фаза 1: Распределение секторов Box+1', title: 'Занятие секторов ответственности', desc: 'Зона делится на 4 квадрата. D1 сближается с соперником ниже круга вбрасывания. D2 фиксирует нападающего перед воротами.', p1: 'D1 не дает поднять голову и вылезти на пятак.', p2: 'D2 вяжет клюшку игрока на пятаке.' },
+              { tEnd: 5.0, badge: 'Фаза 2 (2.5 - 5.0с)', label: 'Фаза 2: Поддержка центра F1 (+1)', title: 'F1 вступает вторым номером в отбор', desc: 'Центральный F1 опускается на помощь D1 у борта, сохраняя позицию на шаг впереди эпизода без провала.', p1: 'F1 страхует возможный отскок или обыгрыш D1.', p2: 'F2 держит синюю линию на сильном борту.' },
+              { tEnd: 7.5, badge: 'Фаза 3 (5.0 - 7.5с)', label: 'Фаза 3: Защита слота (F3)', title: 'F3 закрывает середину и дальний фланг', desc: 'F3 опускается в вершину слота, контролируя дальнего нападающего и защитника соперника. Пятак забетонирован.', p1: 'Исключены сквозные диагональные передачи.', p2: 'Соперник загнан в угол без коридоров.' },
+              { tEnd: 10.0, badge: 'Фаза 4 (7.5 - 10.0с)', label: 'Фаза 4: Отбор и начало раската', title: 'Выигрыш единоборства и передача на выход', desc: 'D1 и F1 отбирают шайбу у борта. F1 находит свободного F2 у полуборта для начала выхода из зоны.', p1: 'Полная нейтрализация позиционной атаки.', p2: 'Контролируемый выход через фланг.' }
+            ],
+            players: {
+              D1: [{t:0,x:1720,y:680},{t:2.5,x:1780,y:720},{t:5.0,x:1800,y:730},{t:7.5,x:1760,y:690},{t:10.0,x:1620,y:680}],
+              D2: [{t:0,x:1740,y:430},{t:2.5,x:1730,y:425},{t:5.0,x:1730,y:425},{t:7.5,x:1730,y:425},{t:10.0,x:1680,y:425}],
+              F1: [{t:0,x:1600,y:500},{t:2.5,x:1660,y:600},{t:5.0,x:1720,y:680},{t:7.5,x:1710,y:660},{t:10.0,x:1560,y:580}],
+              F2: [{t:0,x:1440,y:680},{t:2.5,x:1420,y:680},{t:5.0,x:1400,y:690},{t:7.5,x:1420,y:690},{t:10.0,x:1360,y:700}],
+              F3: [{t:0,x:1520,y:260},{t:2.5,x:1540,y:340},{t:5.0,x:1560,y:380},{t:7.5,x:1560,y:380},{t:10.0,x:1450,y:340}],
+              OD1: [{t:0,x:1280,y:720},{t:5.0,x:1280,y:720},{t:10.0,x:1200,y:720}],
+              OD2: [{t:0,x:1280,y:180},{t:5.0,x:1280,y:180},{t:10.0,x:1200,y:180}],
+              OF1: [{t:0,x:1740,y:680},{t:2.5,x:1820,y:730},{t:5.0,x:1820,y:740},{t:7.5,x:1810,y:720},{t:10.0,x:1720,y:690}],
+              OF2: [{t:0,x:1700,y:425},{t:5.0,x:1710,y:425},{t:10.0,x:1710,y:425}],
+              OF3: [{t:0,x:1580,y:220},{t:5.0,x:1560,y:300},{t:10.0,x:1480,y:240}],
+              Puck: [{t:0,x:1740,y:680},{t:2.5,x:1820,y:730},{t:5.0,x:1810,y:740},{t:7.5,x:1720,y:665},{t:10.0,x:1365,y:700}]
+            }
+          },
+          B: {
+            btnLabel: 'B: Пас на вершину (Point Pass)',
+            title: 'Сценарий B: Передача на синюю линию, блок F2 и уплотнение слота F3',
+            phases: [
+              { tEnd: 2.5, badge: 'Фаза 1 (0.0 - 2.5с)', label: 'Фаза 1: Пас соперника на синюю', title: 'Пас из угла на защитника OD1', desc: 'OF1 отдает пас назад на вершину защитнику OD1. F2 выдвигается на линию броска в позиции Defensive Side.', p1: 'F2 находится строго между шайбой и створом ворот.', p2: 'D1 и F1 возвращаются на оборонительную сторону.' },
+              { tEnd: 5.0, badge: 'Фаза 2 (2.5 - 5.0с)', label: 'Фаза 2: Активный блок броска F2', title: 'Блокировка коридора броска', desc: 'F2 сокращает дистанцию клюшкой, не давая нанести акцентированный бросок и закрывая пас в центр.', p1: 'Клюшка в линию передачи/броска.', p2: 'D2 очищает обзор вратарю перед воротами.' },
+              { tEnd: 7.5, badge: 'Фаза 3 (5.0 - 7.5с)', label: 'Фаза 3: F3 держит слабый борт', title: 'F3 нейтрализует диагональ на OD2', desc: 'F3 смещается в слоте, перекрывая диагональный пас на второго защитника OD2.', p1: 'Центр зоны полностью перекрыт треугольником F3-D2-F1.', p2: 'У соперника нет опасного продолжения.' },
+              { tEnd: 10.0, badge: 'Фаза 4 (7.5 - 10.0с)', label: 'Фаза 4: Блок и перехват', title: 'Блок шайбы и контратака', desc: 'Бросок блокируется клюшкой F2, шайба подбирается F1 для быстрого отрыва 2 в 1.', p1: 'Успешная защита синей линии.', p2: 'Переход в быстрый отрыв.' }
+            ],
+            players: {
+              D1: [{t:0,x:1800,y:720},{t:3.0,x:1750,y:640},{t:6.0,x:1720,y:580},{t:10.0,x:1640,y:600}],
+              D2: [{t:0,x:1730,y:425},{t:5.0,x:1730,y:425},{t:10.0,x:1710,y:425}],
+              F1: [{t:0,x:1700,y:660},{t:3.0,x:1640,y:560},{t:6.0,x:1580,y:500},{t:10.0,x:1350,y:450}],
+              F2: [{t:0,x:1460,y:680},{t:2.5,x:1360,y:700},{t:5.0,x:1320,y:710},{t:7.5,x:1300,y:710},{t:10.0,x:1200,y:680}],
+              F3: [{t:0,x:1560,y:360},{t:3.0,x:1520,y:320},{t:6.0,x:1480,y:300},{t:10.0,x:1300,y:280}],
+              OD1: [{t:0,x:1280,y:720},{t:3.0,x:1260,y:720},{t:6.0,x:1270,y:720},{t:10.0,x:1200,y:720}],
+              OD2: [{t:0,x:1280,y:180},{t:5.0,x:1280,y:220},{t:10.0,x:1240,y:250}],
+              OF1: [{t:0,x:1800,y:740},{t:2.0,x:1760,y:740},{t:6.0,x:1680,y:700},{t:10.0,x:1600,y:680}],
+              OF2: [{t:0,x:1710,y:425},{t:6.0,x:1710,y:425},{t:10.0,x:1680,y:425}],
+              OF3: [{t:0,x:1560,y:260},{t:6.0,x:1580,y:320},{t:10.0,x:1520,y:360}],
+              Puck: [{t:0,x:1800,y:740},{t:2.2,x:1265,y:720},{t:5.5,x:1300,y:710},{t:7.5,x:1350,y:580},{t:10.0,x:1180,y:450}]
+            }
+          },
+          C: {
+            btnLabel: 'C: Смена фланга (Rim Switch)',
+            title: 'Сценарий C: Заброс за ворота (Rim), ротация защитников и смена стороны F1',
+            phases: [
+              { tEnd: 2.5, badge: 'Фаза 1 (0.0 - 2.5с)', label: 'Фаза 1: Перевод шайбы за воротами', title: 'Соперник переводит атаку на дальний фланг', desc: 'OF1 сбрасывает шайбу по борту за воротами на противоположный край. F1 читает смену и начинает движение.', p1: 'Сигнал всей пятерке на зеркальную перестройку.', p2: 'Смена сильной и слабой стороны.' },
+              { tEnd: 5.0, badge: 'Фаза 2 (2.5 - 5.0с)', label: 'Фаза 2: D2 идет в угол, D1 садится на пятак', title: 'Ротация защитников (D-to-D Switch)', desc: 'D2 срывается с пятака навстречу шайбе в угол, а D1 смещается на его место и блокирует пятак.', p1: 'Защитники слаженно меняются ролями.', p2: 'Пятак не остается пустым ни на секунду.' },
+              { tEnd: 7.5, badge: 'Фаза 3 (5.0 - 7.5с)', label: 'Фаза 3: Перемещение F1, F2 и F3', title: 'Центральный F1 поддерживает D2', desc: 'F1 перемещается в новый сильный угол на помощь D2. F3 опекает защитника на синей, F2 стягивается в слот.', p1: 'F1 мгновенно переключает фланг.', p2: 'F3 становится сильным вингером, F2 — слабым.' },
+              { tEnd: 10.0, badge: 'Фаза 4 (7.5 - 10.0с)', label: 'Фаза 4: Фиксация и отбор', title: 'Капкан захлопнут на новом борту', desc: 'D2 и F1 берут в клещи принимающего нападающего OF3, предотвращая развитие атаки.', p1: 'Зеркальная структура Box+1 восстановлена.', p2: 'Отбор шайбы.' }
+            ],
+            players: {
+              D1: [{t:0,x:1780,y:720},{t:3.5,x:1750,y:580},{t:6.5,x:1730,y:440},{t:10.0,x:1730,y:425}],
+              D2: [{t:0,x:1730,y:425},{t:3.5,x:1760,y:300},{t:6.5,x:1800,y:160},{t:10.0,x:1810,y:140}],
+              F1: [{t:0,x:1680,y:650},{t:3.5,x:1640,y:480},{t:6.5,x:1680,y:280},{t:10.0,x:1740,y:180}],
+              F2: [{t:0,x:1420,y:680},{t:5.0,x:1480,y:560},{t:8.0,x:1540,y:450},{t:10.0,x:1560,y:420}],
+              F3: [{t:0,x:1560,y:360},{t:4.0,x:1480,y:260},{t:7.0,x:1400,y:180},{t:10.0,x:1380,y:160}],
+              OD1: [{t:0,x:1280,y:720},{t:6.0,x:1280,y:650},{t:10.0,x:1260,y:600}],
+              OD2: [{t:0,x:1280,y:180},{t:6.0,x:1280,y:160},{t:10.0,x:1260,y:150}],
+              OF1: [{t:0,x:1820,y:740},{t:2.5,x:1840,y:650},{t:6.0,x:1780,y:550},{t:10.0,x:1700,y:500}],
+              OF2: [{t:0,x:1710,y:425},{t:6.0,x:1710,y:425},{t:10.0,x:1700,y:425}],
+              OF3: [{t:0,x:1580,y:240},{t:4.0,x:1700,y:180},{t:6.5,x:1820,y:140},{t:10.0,x:1820,y:140}],
+              Puck: [{t:0,x:1820,y:740},{t:2.0,x:1880,y:540},{t:4.0,x:1880,y:300},{t:6.5,x:1820,y:140},{t:10.0,x:1805,y:140}]
+            }
+          }
+        }
+      }
+    };
+
+    // --- ГЛОБАЛЬНОЕ СОСТОЯНИЕ ---
+    let currentSystemKey = 'NZ_113';
+    let currentScenario = 'A';
+    let appMode = 'anim'; // 'anim' | 'free'
+    let currentTime = 0.0;
+    const maxTime = 10.0;
+    let isPlaying = false;
+    let playbackSpeed = 1.0;
+    let lastTimestamp = null;
+
+    // Свободные позиции и рисование
+    let freePositions = {};
+    let draggedEntityKey = null;
+    let dragOffset = { x: 0, y: 0 };
+    let drawnArrows = [];
+    let activeDrawTool = 'color'; // 'color' или 'eraser'
+    let currentDrawColor = '#38bdf8';
+    let isDrawing = false;
+    let drawStart = null;
+
+    // --- УПРАВЛЕНИЕ ВЫПАДАЮЩИМИ МЕНЮ ---
+    function toggleDropdown(zoneKey) {
+      ['OZ', 'NZ', 'DZ'].forEach(k => {
+        const menu = document.getElementById(`menu-${k}`);
+        if (k === zoneKey) menu.classList.toggle('hidden');
+        else menu.classList.add('hidden');
+      });
+    }
+
+    window.addEventListener('click', (e) => {
+      if (!e.target.closest('#dropdown-OZ') && !e.target.closest('#dropdown-NZ') && !e.target.closest('#dropdown-DZ')) {
+        ['OZ', 'NZ', 'DZ'].forEach(k => document.getElementById(`menu-${k}`).classList.add('hidden'));
+      }
+    });
+
+    // --- ВЫБОР СИСТЕМЫ ИЗ МЕНЮ ---
+    function selectSystem(sysKey) {
+      ['OZ', 'NZ', 'DZ'].forEach(k => document.getElementById(`menu-${k}`).classList.add('hidden'));
+      currentSystemKey = sysKey;
+      const sys = TACTICAL_DB[sysKey];
+      currentScenario = Object.keys(sys.scenarios)[0];
+
+      document.getElementById('activeZoneBadge').textContent = sys.zoneName;
+      document.getElementById('activeSystemSubtitle').textContent = sys.name;
+
+      ['OZ', 'NZ', 'DZ'].forEach(z => {
+        const btn = document.getElementById(`btn-zone-${z}`);
+        if (z === sys.zone) {
+          btn.className = 'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all bg-cyan-950/70 text-cyan-300 border-cyan-600 shadow-sm';
+        } else {
+          btn.className = 'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border transition-all bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white';
+        }
+      });
+
+      buildScenarioButtons();
+      buildRolesPanel();
+      resetTimeline();
+      if (appMode === 'free') syncFreePositions();
+      render();
+    }
+
+    function buildScenarioButtons() {
+      const sys = TACTICAL_DB[currentSystemKey];
+      const container = document.getElementById('scenarioButtonsContainer');
+      container.innerHTML = '';
+
+      Object.keys(sys.scenarios).forEach(scenKey => {
+        const sc = sys.scenarios[scenKey];
+        const btn = document.createElement('button');
+        btn.id = `scen-btn-${scenKey}`;
+        btn.onclick = () => setScenario(scenKey);
+        const isActive = scenKey === currentScenario;
+        btn.className = isActive
+          ? 'px-3 py-1.5 rounded-xl text-xs font-bold bg-cyan-500 text-slate-950 shadow transition-all'
+          : 'px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-800/90 text-slate-300 hover:text-white hover:bg-slate-700 transition-all';
+        btn.textContent = sc.btnLabel;
+        container.appendChild(btn);
+      });
+    }
+
+    function buildRolesPanel() {
+      const sys = TACTICAL_DB[currentSystemKey];
+      const container = document.getElementById('rolesContainer');
+      container.innerHTML = '';
+      sys.roles.forEach(r => {
+        container.innerHTML += `
+          <div class="flex items-center justify-between p-2 rounded-xl bg-slate-950/60 border border-slate-800/80">
+            <div class="flex items-center gap-2">
+              <span class="w-6 h-6 rounded-lg ${r.color} text-white font-bold flex items-center justify-center text-[11px] shadow">${r.tag}</span>
+              <span class="font-semibold text-slate-200">${r.name}</span>
+            </div>
+            <span class="text-slate-400 text-[11px] text-right ml-2">${r.desc}</span>
+          </div>
+        `;
+      });
+    }
+
+    function setScenario(scenKey) {
+      currentScenario = scenKey;
+      buildScenarioButtons();
+      resetTimeline();
+      if (appMode === 'free') {
+        syncFreePositions();
+        render();
+      }
+    }
+
+    // --- ПЕРЕКЛЮЧЕНИЕ АНИМАЦИИ / СВОБОДНОЙ ДОСКИ ---
+    function setMode(mode) {
+      appMode = mode;
+      const animBtn = document.getElementById('mode-anim-btn');
+      const freeBtn = document.getElementById('mode-free-btn');
+      const animControls = document.getElementById('animControls');
+      const drawControls = document.getElementById('drawControls');
+      const tip = document.getElementById('statusTip');
+
+      if (mode === 'free') {
+        pause();
+        syncFreePositions();
+        animBtn.className = 'px-2.5 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5';
+        freeBtn.className = 'px-2.5 py-1.5 rounded-lg font-semibold bg-amber-500 text-slate-950 shadow transition flex items-center gap-1.5';
+        animControls.classList.add('opacity-40', 'pointer-events-none');
+        drawControls.classList.remove('hidden');
+        tip.classList.remove('hidden');
+        setDrawTool('color', currentDrawColor); // Сбросить ластик при входе
+      } else {
+        freeBtn.className = 'px-2.5 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5';
+        animBtn.className = 'px-2.5 py-1.5 rounded-lg font-semibold bg-cyan-500 text-slate-950 shadow transition flex items-center gap-1.5';
+        animControls.classList.remove('opacity-40', 'pointer-events-none');
+        drawControls.classList.add('hidden');
+        tip.classList.add('hidden');
+      }
+      render();
+    }
+
+    function syncFreePositions() {
+      const playersData = TACTICAL_DB[currentSystemKey].scenarios[currentScenario].players;
+      Object.keys(playersData).forEach(k => {
+        const pt = getInterpolatedPosition(playersData[k], currentTime);
+        freePositions[k] = { x: pt.x, y: pt.y };
+      });
+    }
+
+    // --- ИНТЕРПОЛЯЦИЯ И ГЕОМЕТРИЯ ---
+    function getInterpolatedPosition(keyframes, t) {
+      if (t <= keyframes[0].t) return { x: keyframes[0].x, y: keyframes[0].y };
+      const last = keyframes[keyframes.length - 1];
+      if (t >= last.t) return { x: last.x, y: last.y };
+      for (let i = 0; i < keyframes.length - 1; i++) {
+        const k1 = keyframes[i], k2 = keyframes[i + 1];
+        if (t >= k1.t && t <= k2.t) {
+          const r = (t - k1.t) / (k2.t - k1.t);
+          const ease = r * r * (3 - 2 * r);
+          return { x: k1.x + (k2.x - k1.x) * ease, y: k1.y + (k2.y - k1.y) * ease };
+        }
+      }
+      return { x: last.x, y: last.y };
+    }
+
+    // Математика для ластика (расстояние от точки до отрезка)
+    function getDistanceToSegment(p, v, w) {
+      const l2 = (w.x - v.x) ** 2 + (w.y - v.y) ** 2;
+      if (l2 == 0) return Math.hypot(p.x - v.x, p.y - v.y);
+      let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
+    }
+
+    // --- ХОЛСТ И МАСШТАБИРОВАНИЕ ---
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      render();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function toCanvas(vX, vY) {
+      return { x: vX * (canvas.width / V_WIDTH), y: vY * (canvas.height / V_HEIGHT) };
+    }
+    function scaleVal(v) {
+      return v * (canvas.width / V_WIDTH);
+    }
+
+    // --- ОТРИСОВКА ПЛОЩАДКИ ---
+    function drawRink() {
+      ctx.save();
+      const bgGrad = ctx.createRadialGradient(
+        canvas.width * 0.5, canvas.height * 0.5, canvas.width * 0.1,
+        canvas.width * 0.5, canvas.height * 0.5, canvas.width * 0.6
+      );
+      bgGrad.addColorStop(0, '#f8fafc');
+      bgGrad.addColorStop(1, '#e2e8f0');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const r = scaleVal(180);
+      const bMargin = scaleVal(20);
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = scaleVal(12);
+      ctx.beginPath();
+      ctx.roundRect(bMargin, bMargin, canvas.width - bMargin * 2, canvas.height - bMargin * 2, r);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#eab308';
+      ctx.lineWidth = scaleVal(3);
+      ctx.beginPath();
+      ctx.roundRect(bMargin + scaleVal(3), bMargin + scaleVal(3), canvas.width - (bMargin + scaleVal(3)) * 2, canvas.height - (bMargin + scaleVal(3)) * 2, r - scaleVal(2));
+      ctx.stroke();
+
+      // Красная линия
+      const centerPt = toCanvas(1000, 0);
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = scaleVal(10);
+      ctx.beginPath();
+      ctx.moveTo(centerPt.x, bMargin);
+      ctx.lineTo(centerPt.x, canvas.height - bMargin);
+      ctx.stroke();
+
+      // Синие линии (750 и 1250)
+      const blueLeft = toCanvas(750, 0);
+      const blueRight = toCanvas(1250, 0);
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = scaleVal(10);
+      ctx.beginPath();
+      ctx.moveTo(blueLeft.x, bMargin);
+      ctx.lineTo(blueLeft.x, canvas.height - bMargin);
+      ctx.moveTo(blueRight.x, bMargin);
+      ctx.lineTo(blueRight.x, canvas.height - bMargin);
+      ctx.stroke();
+
+      // Линии ворот (200 и 1800)
+      const goalLeft = toCanvas(200, 0);
+      const goalRight = toCanvas(1800, 0);
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = scaleVal(4);
+      ctx.beginPath();
+      ctx.moveTo(goalLeft.x, bMargin);
+      ctx.lineTo(goalLeft.x, canvas.height - bMargin);
+      ctx.moveTo(goalRight.x, bMargin);
+      ctx.lineTo(goalRight.x, canvas.height - bMargin);
+      ctx.stroke();
+
+      drawCrease(200, 425, 1);
+      drawCrease(1800, 425, -1);
+
+      // Центральный круг
+      drawFaceoffCircle(1000, 425, '#2563eb', true);
+
+      // Точки вбрасывания В СРЕДНЕЙ ЗОНЕ (800 и 1200)
+      drawFaceoffDot(800, 225, '#dc2626');
+      drawFaceoffDot(800, 625, '#dc2626');
+      drawFaceoffDot(1200, 225, '#dc2626');
+      drawFaceoffDot(1200, 625, '#dc2626');
+
+      // Круги вбрасывания в конечных зонах
+      drawFaceoffCircle(400, 225, '#dc2626');
+      drawFaceoffCircle(400, 625, '#dc2626');
+      drawFaceoffCircle(1600, 225, '#dc2626');
+      drawFaceoffCircle(1600, 625, '#dc2626');
+
+      ctx.restore();
+    }
+
+    function drawCrease(vX, vY, dir) {
+      const pt = toCanvas(vX, vY);
+      const rad = scaleVal(50);
+      ctx.fillStyle = '#bae6fd';
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = scaleVal(3);
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, rad, dir > 0 ? -Math.PI / 2 : Math.PI / 2, dir > 0 ? Math.PI / 2 : -Math.PI / 2, false);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#94a3b8';
+      const netW = scaleVal(25), netH = scaleVal(50);
+      const netX = dir > 0 ? pt.x - netW : pt.x;
+      ctx.fillRect(netX, pt.y - netH / 2, netW, netH);
+      ctx.strokeRect(netX, pt.y - netH / 2, netW, netH);
+    }
+
+    function drawFaceoffCircle(vX, vY, color, isCenter = false) {
+      const pt = toCanvas(vX, vY);
+      const rad = scaleVal(145);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = scaleVal(3.5);
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, rad, 0, Math.PI * 2);
+      ctx.stroke();
+      drawFaceoffDot(vX, vY, color);
+      if (!isCenter) {
+        ctx.lineWidth = scaleVal(3);
+        const hashLen = scaleVal(18), hashDist = scaleVal(24);
+        [-1, 1].forEach(hDir => {
+          ctx.beginPath();
+          ctx.moveTo(pt.x + hashDist * hDir, pt.y - rad - hashLen);
+          ctx.lineTo(pt.x + hashDist * hDir, pt.y - rad + hashLen);
+          ctx.moveTo(pt.x + hashDist * hDir, pt.y + rad - hashLen);
+          ctx.lineTo(pt.x + hashDist * hDir, pt.y + rad + hashLen);
+          ctx.stroke();
+        });
+      }
+    }
+
+    function drawFaceoffDot(vX, vY, color) {
+      const pt = toCanvas(vX, vY);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, scaleVal(10), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // --- СЛОИ: КОРИДОРЫ, ТРАЕКТОРИИ, ГЭП ---
+    function drawLanesOverlay() {
+      if (!document.getElementById('layerLanes').checked) return;
+      ctx.save();
+      const ptTop = toCanvas(0, 283);
+      const ptMid = toCanvas(0, 566);
+
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.06)';
+      ctx.fillRect(0, ptMid.y, canvas.width, canvas.height - ptMid.y);
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.05)';
+      ctx.fillRect(0, ptTop.y, canvas.width, ptMid.y - ptTop.y);
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, ptTop.y);
+
+      ctx.strokeStyle = 'rgba(100, 116, 139, 0.4)';
+      ctx.setLineDash([scaleVal(8), scaleVal(8)]);
+      ctx.lineWidth = scaleVal(2);
+      ctx.beginPath();
+      ctx.moveTo(0, ptTop.y); ctx.lineTo(canvas.width, ptTop.y);
+      ctx.moveTo(0, ptMid.y); ctx.lineTo(canvas.width, ptMid.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const nzX = toCanvas(1000, 0).x;
+      ctx.font = `bold ${Math.max(10, scaleVal(16))}px 'Inter', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(147, 51, 234, 0.55)';
+      ctx.fillText('WIDE LANE (Слабый фланг)', nzX, ptTop.y * 0.5);
+      ctx.fillStyle = 'rgba(5, 150, 105, 0.55)';
+      ctx.fillText('MIDDLE LANE (Центральная ось)', nzX, (ptTop.y + ptMid.y) * 0.5);
+      ctx.fillStyle = 'rgba(2, 132, 199, 0.65)';
+      ctx.fillText('WALL LANE (Сильный борт)', nzX, (ptMid.y + canvas.height) * 0.5);
+      ctx.restore();
+    }
+
+    function drawTrajectories() {
+      if (appMode === 'free' || !document.getElementById('layerTrajectories').checked) return;
+      ctx.save();
+      const currentData = TACTICAL_DB[currentSystemKey].scenarios[currentScenario].players;
+      Object.keys(currentData).forEach(k => {
+        if (k === 'Puck') return;
+        const frames = currentData[k];
+        const isDef = k.startsWith('F') || k.startsWith('D');
+        ctx.strokeStyle = isDef ? 'rgba(14, 165, 233, 0.4)' : 'rgba(239, 68, 68, 0.35)';
+        ctx.lineWidth = scaleVal(3);
+        ctx.setLineDash([scaleVal(5), scaleVal(5)]);
+        ctx.beginPath();
+        frames.forEach((f, idx) => {
+          const pt = toCanvas(f.x, f.y);
+          idx === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+      ctx.restore();
+    }
+
+    function drawGapIndicator(pos) {
+      if (!document.getElementById('layerGap').checked) return;
+      let defP = pos.D1, offP = pos.OF1;
+      if (currentSystemKey === 'OZ_122') { defP = pos.F1; offP = pos.OD1; }
+
+      const p1 = toCanvas(defP.x, defP.y);
+      const p2 = toCanvas(offP.x, offP.y);
+      const vDist = Math.hypot(defP.x - offP.x, defP.y - offP.y);
+
+      if (vDist > 40 && vDist < 340) {
+        ctx.save();
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = scaleVal(3);
+        ctx.setLineDash([scaleVal(6), scaleVal(4)]);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2 - scaleVal(14);
+        const label = 'Гэп: ~1.5–2 м';
+        ctx.font = `bold ${Math.max(9, scaleVal(12))}px 'Inter', sans-serif`;
+        const tw = ctx.measureText(label).width;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.beginPath();
+        ctx.roundRect(midX - tw / 2 - scaleVal(8), midY - scaleVal(10), tw + scaleVal(16), scaleVal(20), scaleVal(5));
+        ctx.fill();
+        ctx.fillStyle = '#38bdf8';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, midX, midY);
+        ctx.restore();
+      }
+    }
+
+    function drawArrow(vX1, vY1, vX2, vY2, color, isDashed = false) {
+      const p1 = toCanvas(vX1, vY1), p2 = toCanvas(vX2, vY2);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = scaleVal(4);
+      if (isDashed) ctx.setLineDash([scaleVal(8), scaleVal(8)]);
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+      const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+      const hl = scaleVal(16);
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(p2.x, p2.y);
+      ctx.lineTo(p2.x - hl * Math.cos(angle - Math.PI / 6), p2.y - hl * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(p2.x - hl * Math.cos(angle + Math.PI / 6), p2.y - hl * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawStickReachCone(x, y, headingAngle, reachRadius, color) {
+      if (!document.getElementById('layerCones').checked) return;
+      ctx.save();
+      const pt = toCanvas(x, y);
+      const rad = scaleVal(reachRadius);
+      const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, rad);
+      grad.addColorStop(0, color.replace('1)', '0.35)'));
+      grad.addColorStop(1, color.replace('1)', '0.0)'));
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, rad, headingAngle - Math.PI / 2.8, headingAngle + Math.PI / 2.8);
+      ctx.lineTo(pt.x, pt.y);
+      ctx.fill();
+      ctx.strokeStyle = color.replace('1)', '0.45)');
+      ctx.lineWidth = scaleVal(1.5);
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, rad, headingAngle - Math.PI / 2.8, headingAngle + Math.PI / 2.8);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function getAngle(px, py, tx, ty) {
+      return Math.atan2(ty - py, tx - px);
+    }
+
+    function drawPlayers(pos) {
+      drawStickReachCone(pos.F1.x, pos.F1.y, getAngle(pos.F1.x, pos.F1.y, pos.Puck.x, pos.Puck.y), 110, 'rgba(59, 130, 246, 1)');
+      drawStickReachCone(pos.F2.x, pos.F2.y, getAngle(pos.F2.x, pos.F2.y, pos.Puck.x, pos.Puck.y), 105, 'rgba(37, 99, 235, 1)');
+      drawStickReachCone(pos.F3.x, pos.F3.y, getAngle(pos.F3.x, pos.F3.y, pos.Puck.x, pos.Puck.y), 110, 'rgba(16, 185, 129, 1)');
+      drawStickReachCone(pos.D1.x, pos.D1.y, getAngle(pos.D1.x, pos.D1.y, pos.Puck.x, pos.Puck.y), 115, 'rgba(16, 185, 129, 1)');
+      drawStickReachCone(pos.D2.x, pos.D2.y, getAngle(pos.D2.x, pos.D2.y, pos.Puck.x, pos.Puck.y), 115, 'rgba(16, 185, 129, 1)');
+
+      drawPlayerCircle(pos.F1.x, pos.F1.y, 'F1', '#2563eb', '#ffffff');
+      drawPlayerCircle(pos.F2.x, pos.F2.y, 'F2', '#1d4ed8', '#ffffff');
+      drawPlayerCircle(pos.F3.x, pos.F3.y, 'F3', '#047857', '#ffffff');
+      drawPlayerCircle(pos.D1.x, pos.D1.y, 'D1', '#059669', '#ffffff');
+      drawPlayerCircle(pos.D2.x, pos.D2.y, 'D2', '#10b981', '#ffffff');
+
+      drawPlayerCircle(pos.OD1.x, pos.OD1.y, 'D1', '#dc2626', '#ffffff', true);
+      drawPlayerCircle(pos.OD2.x, pos.OD2.y, 'D2', '#ef4444', '#ffffff', true);
+      drawPlayerCircle(pos.OF1.x, pos.OF1.y, 'F1', '#b91c1c', '#ffffff', true);
+      drawPlayerCircle(pos.OF2.x, pos.OF2.y, 'F2', '#dc2626', '#ffffff', true);
+      drawPlayerCircle(pos.OF3.x, pos.OF3.y, 'F3', '#ef4444', '#ffffff', true);
+
+      const pk = toCanvas(pos.Puck.x, pos.Puck.y);
+      ctx.save();
+      ctx.shadowColor = 'rgba(245, 158, 11, 0.8)';
+      ctx.shadowBlur = scaleVal(12);
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(pk.x, pk.y, scaleVal(12), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = scaleVal(3);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawPlayerCircle(vX, vY, label, bgColor, textColor, isOpponent = false) {
+      const pt = toCanvas(vX, vY);
+      const rad = scaleVal(22);
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+      ctx.shadowBlur = scaleVal(8);
+      ctx.shadowOffsetY = scaleVal(3);
+      ctx.fillStyle = bgColor;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, rad, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = scaleVal(3);
+      ctx.stroke();
+      if (isOpponent) {
+        ctx.strokeStyle = '#fee2e2';
+        ctx.lineWidth = scaleVal(1.5);
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, rad - scaleVal(4), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = textColor;
+      ctx.font = `800 ${Math.max(9, scaleVal(16))}px 'Inter', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, pt.x, pt.y);
+      ctx.restore();
+    }
+
+    // --- ГЛАВНЫЙ ЦИКЛ ОТРИСОВКИ ---
+    function render() {
+      if (!canvas.width || !canvas.height) return;
+      drawRink();
+      drawLanesOverlay();
+      drawnArrows.forEach(a => drawArrow(a.x1, a.y1, a.x2, a.y2, a.color));
+      drawTrajectories();
+
+      let currentPos = {};
+      if (appMode === 'anim') {
+        const pData = TACTICAL_DB[currentSystemKey].scenarios[currentScenario].players;
+        Object.keys(pData).forEach(k => {
+          currentPos[k] = getInterpolatedPosition(pData[k], currentTime);
+        });
+        updatePhaseUI();
+      } else {
+        currentPos = freePositions;
+      }
+
+      drawGapIndicator(currentPos);
+      drawPlayers(currentPos);
+    }
+
+    function updatePhaseUI() {
+      const scen = TACTICAL_DB[currentSystemKey].scenarios[currentScenario];
+      const phases = scen.phases;
+      let cur = phases[phases.length - 1];
+      for (let i = 0; i < phases.length; i++) {
+        if (currentTime <= phases[i].tEnd) { cur = phases[i]; break; }
+      }
+      document.getElementById('canvasPhaseLabel').textContent = cur.label;
+      document.getElementById('phaseBadge').textContent = cur.badge;
+      document.getElementById('phaseTitle').textContent = cur.title;
+      document.getElementById('phaseDesc').textContent = cur.desc;
+      document.getElementById('phasePoint1').textContent = cur.p1;
+      document.getElementById('phasePoint2').textContent = cur.p2;
+      document.getElementById('currentTimeDisplay').textContent = currentTime.toFixed(1) + ' s';
+      document.getElementById('timelineSlider').value = currentTime.toFixed(2);
+    }
+
+    // --- АНИМАЦИЯ И ПЛЕЕР ---
+    function animate(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const delta = (timestamp - lastTimestamp) / 1000;
+      lastTimestamp = timestamp;
+      if (isPlaying) {
+        currentTime += delta * playbackSpeed;
+        if (currentTime >= maxTime) { currentTime = maxTime; pause(); }
+        render();
+      }
+      requestAnimationFrame(animate);
+    }
+
+    function togglePlay() {
+      if (appMode === 'free') setMode('anim');
+      if (isPlaying) pause();
+      else { if (currentTime >= maxTime) currentTime = 0.0; play(); }
+    }
+    function play() {
+      isPlaying = true;
+      document.getElementById('playBtnText').textContent = 'Пауза';
+      document.getElementById('playIcon').setAttribute('data-lucide', 'pause');
+      lucide.createIcons();
+    }
+    function pause() {
+      isPlaying = false;
+      document.getElementById('playBtnText').textContent = 'Старт';
+      document.getElementById('playIcon').setAttribute('data-lucide', 'play');
+      lucide.createIcons();
+    }
+    function resetTimeline() { pause(); currentTime = 0.0; render(); }
+    function stepFrame(s) { pause(); currentTime = Math.max(0, Math.min(maxTime, currentTime + s)); render(); }
+    function jumpTo(t) { currentTime = t; render(); }
+    function setSpeed(spd) {
+      playbackSpeed = spd;
+      ['spd05', 'spd10', 'spd15'].forEach(id => {
+        const b = document.getElementById(id);
+        b.classList.remove('bg-slate-800', 'text-cyan-400', 'font-bold');
+        b.classList.add('text-slate-400');
+      });
+      const act = spd === 0.5 ? 'spd05' : spd === 1.0 ? 'spd10' : 'spd15';
+      const ab = document.getElementById(act);
+      ab.classList.add('bg-slate-800', 'text-cyan-400', 'font-bold');
+      ab.classList.remove('text-slate-400');
+    }
+
+    document.getElementById('timelineSlider').addEventListener('input', (e) => {
+      pause();
+      currentTime = parseFloat(e.target.value);
+      render();
+    });
+
+    // --- DRAG & DROP, ИНСТРУМЕНТЫ И РИСОВАНИЕ ---
+    function setDrawTool(type, val = null) {
+      activeDrawTool = type;
+      const eraserBtn = document.getElementById('tool-eraser');
+      const tip = document.getElementById('statusTip');
+      
+      // Сброс всех кнопок цветов
+      document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (type === 'color') {
+        currentDrawColor = val;
+        canvas.style.cursor = 'crosshair';
+        eraserBtn.classList.remove('bg-amber-500/20', 'border-amber-400', 'text-amber-300');
+        eraserBtn.classList.add('border-slate-700', 'text-slate-400');
+        
+        // Подсвечиваем активный цвет
+        let btnId = '';
+        if(val === '#38bdf8') btnId = 'color-blue';
+        if(val === '#f43f5e') btnId = 'color-red';
+        if(val === '#10b981') btnId = 'color-green';
+        if(val === '#eab308') btnId = 'color-yellow';
+        if(btnId) document.getElementById(btnId).classList.add('active');
+        
+        tip.textContent = 'Режим доски: ЛКМ — двигать игроков | ПКМ — рисовать стрелки';
+        tip.classList.remove('text-rose-300', 'bg-rose-950/80', 'border-rose-700/60');
+        tip.classList.add('text-amber-300', 'bg-amber-950/80', 'border-amber-700/60');
+        
+      } else if (type === 'eraser') {
+        canvas.style.cursor = 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23fbbf24\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><path d=\'m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21\'/><path d=\'M22 21H7\'/><path d=\'m5 11 9 9\'/></svg>") 0 24, crosshair';
+        eraserBtn.classList.add('bg-amber-500/20', 'border-amber-400', 'text-amber-300');
+        eraserBtn.classList.remove('border-slate-700', 'text-slate-400');
+        
+        tip.textContent = 'Включен Ластик: кликните (ЛКМ) по нарисованной стрелке, чтобы удалить её';
+        tip.classList.add('text-rose-300', 'bg-rose-950/80', 'border-rose-700/60');
+        tip.classList.remove('text-amber-300', 'bg-amber-950/80', 'border-amber-700/60');
+      }
+    }
+
+    function attachCanvasEvents() {
+      const getCoords = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: (e.clientX - rect.left) * (V_WIDTH / rect.width),
+          y: (e.clientY - rect.top) * (V_HEIGHT / rect.height)
+        };
+      };
+
+      canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+      canvas.addEventListener('pointerdown', (e) => {
+        if (appMode !== 'free') return;
+        const c = getCoords(e);
+        
+        // 1. РЕЖИМ ЛАСТИКА (Левый клик по холсту)
+        if (activeDrawTool === 'eraser' && e.button === 0) {
+            for (let i = drawnArrows.length - 1; i >= 0; i--) {
+                const arrow = drawnArrows[i];
+                // Математическая проверка расстояния до линии
+                const dist = getDistanceToSegment(c, {x: arrow.x1, y: arrow.y1}, {x: arrow.x2, y: arrow.y2});
+                if (dist < 30) {
+                    drawnArrows.splice(i, 1); // удаляем стрелку
+                    render(); // перерисовываем холст
+                    return; // удаляем только одну
+                }
+            }
+            return; // Если ластик включен, запрещаем перетаскивать игроков
+        }
+
+        // 2. РЕЖИМ РИСОВАНИЯ СТРЕЛКИ (ПКМ)
+        if (e.button === 2) {
+          isDrawing = true;
+          drawStart = c;
+          // Если начали рисовать стрелку, автоматически переключаемся с ластика обратно на кисть
+          if (activeDrawTool === 'eraser') setDrawTool('color', currentDrawColor);
+          return;
+        }
+        
+        // 3. РЕЖИМ ПЕРЕТАСКИВАНИЯ (ЛКМ при выключенном ластике)
+        if (activeDrawTool !== 'eraser') {
+            for (let k in freePositions) {
+              if (Math.hypot(freePositions[k].x - c.x, freePositions[k].y - c.y) < 42) {
+                draggedEntityKey = k;
+                dragOffset = { x: freePositions[k].x - c.x, y: freePositions[k].y - c.y };
+                break;
+              }
+            }
+        }
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        if (appMode !== 'free') return;
+        const c = getCoords(e);
+        if (draggedEntityKey && activeDrawTool !== 'eraser') {
+          freePositions[draggedEntityKey].x = Math.max(30, Math.min(V_WIDTH - 30, c.x + dragOffset.x));
+          freePositions[draggedEntityKey].y = Math.max(30, Math.min(V_HEIGHT - 30, c.y + dragOffset.y));
+          render();
+        } else if (isDrawing && drawStart) {
+          render();
+          drawArrow(drawStart.x, drawStart.y, c.x, c.y, currentDrawColor, true);
+        }
+      });
+
+      window.addEventListener('pointerup', (e) => {
+        if (appMode !== 'free') return;
+        if (isDrawing && drawStart) {
+          const c = getCoords(e);
+          if (Math.hypot(c.x - drawStart.x, c.y - drawStart.y) > 25) {
+            drawnArrows.push({ x1: drawStart.x, y1: drawStart.y, x2: c.x, y2: c.y, color: currentDrawColor });
+          }
+          isDrawing = false;
+          drawStart = null;
+          render();
+        }
+        draggedEntityKey = null;
+      });
+    }
+
+    function clearDrawings() { drawnArrows = []; render(); }
+
+    // --- ЭКСПОРТ КАРТОЧКИ ---
+    function exportTacticalCard() {
+      const sys = TACTICAL_DB[currentSystemKey];
+      const scen = sys.scenarios[currentScenario];
+      const ec = document.createElement('canvas');
+      const eCtx = ec.getContext('2d');
+      ec.width = 1600;
+      ec.height = 960;
+
+      eCtx.fillStyle = '#090d16';
+      eCtx.fillRect(0, 0, ec.width, ec.height);
+
+      eCtx.fillStyle = '#38bdf8';
+      eCtx.font = "bold 32px 'Inter', sans-serif";
+      eCtx.fillText(`${sys.zoneName.toUpperCase()} — ${sys.name.toUpperCase()}`, 50, 55);
+
+      eCtx.fillStyle = '#94a3b8';
+      eCtx.font = "500 20px 'Inter', sans-serif";
+      eCtx.fillText(`${scen.title} | Таймкод: ${currentTime.toFixed(1)}s`, 50, 90);
+
+      eCtx.drawImage(canvas, 50, 115, 1500, 640);
+      eCtx.strokeStyle = '#334155';
+      eCtx.lineWidth = 4;
+      eCtx.strokeRect(50, 115, 1500, 640);
+
+      eCtx.fillStyle = '#0f172a';
+      eCtx.fillRect(50, 775, 1500, 145);
+      eCtx.strokeStyle = '#1e293b';
+      eCtx.strokeRect(50, 775, 1500, 145);
+
+      const curPhase = scen.phases.find(p => currentTime <= p.tEnd) || scen.phases[scen.phases.length - 1];
+      eCtx.fillStyle = '#38bdf8';
+      eCtx.font = "bold 22px 'Inter', sans-serif";
+      eCtx.fillText(`${curPhase.badge}: ${curPhase.title}`, 75, 815);
+
+      eCtx.fillStyle = '#cbd5e1';
+      eCtx.font = "400 17px 'Inter', sans-serif";
+      eCtx.fillText(curPhase.desc, 75, 850);
+      eCtx.fillText(`• ${curPhase.p1}   |   • ${curPhase.p2}`, 75, 888);
+
+      const link = document.createElement('a');
+      link.download = `tactical_${currentSystemKey}_${currentScenario}.png`;
+      link.href = ec.toDataURL('image/png');
+      link.click();
+    }
+
+    // --- ЗАПУСК ---
+    window.onload = function() {
+      attachCanvasEvents();
+      selectSystem('NZ_113');
+      resizeCanvas();
+      setDrawTool('color', currentDrawColor); // инициализация кисти
+      requestAnimationFrame(animate);
+    };
+  </script>
+</body>
+</html>
